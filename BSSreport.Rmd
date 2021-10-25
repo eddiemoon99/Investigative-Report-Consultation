@@ -1,0 +1,279 @@
+---
+title: "Investigative Report of Black Saber Software Hiring and Renumeration"
+author: "Report prepared for Black Saber Software by Eddie Moon Data"
+date: '2021-04-21'
+output:
+  pdf_document:
+    template: report.tex
+    toc: yes
+    toc_depth: 2
+  html_document:
+    df_print: paged
+    toc: yes
+    toc_depth: '2'
+subtitle: Examining potential bias in the company
+lang: en
+titlepage: yes
+titlepage-color: 32a88f
+titlepage-rule-color: FFFFFF
+titlepage-rule-height: 2
+titlepage-text-color: FFFFFF
+---
+
+```{r, message = FALSE, echo=FALSE}
+library(tidyverse)
+library(knitr)
+# this should supress all code and messages
+knitr::opts_chunk$set(echo=FALSE)
+```
+
+# General comments (you can delete this section)
+
+_You can delete this section, and if you want to check what it said, just open a template from the package again. You don't have to use this particular template, but you DO need to write you report in RMarkdown and include a cover page._
+
+_The cover page must have:_
+
+*	_A title and subtitle_
+* _"Report prepared for Black Saber Software by" your company name_
+*	_Date (assessment submission date is fine)_
+
+_You can change the colour of this cover to any colour you would like by replacing 6C3082 in the YAML above (line 11) to another hex code. You could use this tool to help you:_ https://htmlcolorcodes.com/color-picker/
+
+\newpage
+# Executive summary
+
+_Guidelines for the executive summary:_
+
+* _No more than two pages_
+* _Language is appropriate for a non-technical audience_
+* _Bullet points are used where appropriate_
+*	_A small number of key visualizations and/or tables are included_
+*	_All three research questions are addressed_
+
+
+\newpage
+# Technical report
+
+## Introduction
+
+This report will attempt to answer the research questions at hand about Black Saber Software. 
+
+### Research questions
+
+1. Are there any existing biases in regards to salaries of the current employees?
+
+2. Does the new AI hiring system have any built-in biases? Does it favour a specific gender over the other?
+
+3. Are there any other biases in the company in general?
+
+
+## Current Employee Salaries
+
+_For each research question, you will want to briefly describe any data manipulation, show some exploratory plots/summary tables, report on any methods you use (i.e. models you fit) and the conclusions you draw from these_
+
+First we can begin by looking at our original dataset, and we will remove the entries where gender is "Prefer not to say". This is because we are trying to find biases that may exist in the gender, so we are not interested in the cases where it is not specified.
+We also want to work with the salary, so we want the value to be numeric so we need to remove the dollar sign and comma from the values in that column.
+
+```{r message=FALSE, echo=FALSE}
+
+## read in data
+black_saber_current <- read_csv("data/black-saber-current-employees.csv")
+
+## remove gender not specified
+black_saber_current <- black_saber_current %>%
+  filter(gender != "Prefer not to say")
+
+## make the salary numeric
+black_saber_current$salary = as.numeric(gsub("[\\$,]", "", black_saber_current$salary))
+
+```
+
+Now let's take a look at a basic scatterplot of our data as salary as the reponse variable.
+
+```{r message=FALSE, echo=FALSE}
+
+## basic scatterplot
+
+black_saber_current_plot <- black_saber_current %>%
+  ggplot(aes(x=productivity, y=salary, colour=factor(gender))) +
+  theme_minimal() +
+  geom_point() +
+  labs(caption = "Figure 1. Productivity vs Salary scatterplot categoried by Gender",
+       x = "Productivity", 
+       y = "Salary") +
+  theme(
+    plot.caption = element_text(hjust=0)
+  )
+ 
+black_saber_current_plot + scale_colour_manual(name="Gender", values = c("#fc8c03", "#03fc7b"))
+
+```
+
+We can see that the salary ranges vary, but it seems they are generally categorized into three different levels, so we can create a new variable that states the salary level, Low, Medium, or High.
+We can also see that productivity seems to vary greatly for all levels of salary, there are people from the productivity scale spread out fairly evenly.
+
+Now let's look at some tables with proportions based on gender.
+
+```{r message=FALSE, echo=FALSE}
+
+## add a new column for high, medium, and low salaries
+black_saber_current <- black_saber_current %>%
+  mutate(salary_type = case_when(
+    (salary >= 140000) ~ "High",
+    (salary >= 100000) ~ "Medium",
+    (salary >= 0) ~ "Low"))
+
+## table for men and women counts
+
+table_1 <- table(black_saber_current$gender)
+kable(table_1, caption = "Counts of gender")
+
+
+## table for proportion based on salary type
+table_2 <- table(black_saber_current$gender, black_saber_current$salary_type)
+kable(prop.table(table_2, margin=1), caption ="Conditional proportions of salaries for each gender", digits = 3)
+
+```
+
+We can see from Table 2 that for both Man and Woman, the proportions are almost identical, meaning there are similar proportions of salary levels for both of the men and women.
+This is one indicator that there is no bias based on gender for this specific case.
+
+
+```{r message=FALSE, echo=FALSE}
+# This chunk provides an example of some things you can do with RMarkdown to make your report creation process easier
+
+# read in the data
+black_saber_current_employees <- read_csv("data/black-saber-current-employees.csv")
+black_saber_phase1 <- read_csv("data/phase1-new-grad-applicants-2020.csv")
+black_saber_phase2 <- read_csv("data/phase2-new-grad-applicants-2020.csv")
+black_saber_phase3 <- read_csv("data/phase3-new-grad-applicants-2020.csv")
+black_saber_finalhires <- read_csv("data/final-hires-newgrad_2020.csv")
+
+# create a visualisation
+my_plot <- black_saber_current_employees %>% 
+  ggplot(aes(x = productivity)) +
+  geom_histogram(colour = "grey", fill = "#6C3082") +
+  theme_minimal() +
+  labs(title = "Look! A title. But do you want a title or a caption for your report?", x = "This is a changed x label")
+
+# save your plot in your images folder, you can specify the height and width, too
+# saving this means you can add the image to your exectuve summary without having to run or rerun the code, if you wish
+ggsave("images/example.png", width = 7, height = 4)
+
+# norice how the image is included with the ![](file/path.png) below
+```
+
+![](images/example.png)
+
+## Hiring AI
+
+Again, we can remove the cases where gender is "Prefer not to say". Firstly we can look at the phase 1 data, the initial applicants. We will create a new variable called total_score, which is the sum of all the numeric variables in the phase 1 data. This wil give us an easy way to compare different applicants. The higher the total_score means the more value an applicant should have in very general terms.
+
+Then we can create another column passed_round that takes TRUE if they made it to phase 2, or FALSE if they were not selected by the AI for phase 2. 
+
+Finally, we can create a plot with the whether they passed or not as the response, and their score on the x-axis.
+
+Let's separate our two graphs for each gender in our data, so we can easily visualize the comparisons.
+
+``` {r message=FALSE, echo=FALSE}
+
+## filtering out non-specified gender rows
+black_saber_phase1 <- black_saber_phase1 %>%
+  filter(gender != "Prefer not to say")
+
+black_saber_phase2 <- black_saber_phase2 %>%
+  filter(gender != "Prefer not to say")
+
+black_saber_phase1 <- black_saber_phase1 %>%
+  mutate(total_score = cover_letter + cv + gpa + extracurriculars + work_experience)
+
+
+## checking whether they passed this phase
+black_saber_new <- black_saber_phase1  %>%
+  left_join(black_saber_phase2) %>%
+  mutate(passed_round = case_when(
+    (is.na(technical_skills) == FALSE) ~ TRUE,
+     (is.na(technical_skills) == TRUE) ~ FALSE))
+
+## plotting men vs women graphs
+black_saber_new <- black_saber_new %>%
+  ggplot(aes(x=total_score, y=passed_round, colour=factor(gender))) +
+  theme_minimal() +
+  geom_point() +
+  facet_wrap(~gender) +
+  labs(caption = "Figure 2. Applicant score vs. Success (TRUE for passing to phase two, FALSE for not)",
+       x = "Score", 
+       y = "Success") +
+  theme(
+    plot.caption = element_text(hjust=0)
+  )
+
+black_saber_new + scale_colour_manual(name="Gender", values = c("#fc8c03", "#03fc7b"))
+
+
+```
+We can see fairly clearly that the distributions for men vs women are similar. No applicant with a total score lower than ~ 6 passed the first stage. There does not seem to be any obvious biases here.
+Let's follow the same approach for phase two to three. We will use the newly tested variables from phase two to create a new score, and again compare men vs women to see who passed. 
+
+``` {r message = FALSE, echo = FALSE}
+
+## make new score
+black_saber_phase2 <- black_saber_phase2 %>%
+  mutate(phase2_score = technical_skills + writing_skills + speaking_skills + leadership_presence)
+
+## check if they passed
+black_saber_new2 <- black_saber_phase2  %>%
+  left_join(black_saber_phase3) %>%
+  mutate(phase2_pass = case_when(
+    (is.na(interviewer_rating_1) == FALSE) ~ TRUE,
+     (is.na(interviewer_rating_1) == TRUE) ~ FALSE)) 
+
+##plotting
+## plotting men vs women graphs
+black_saber_new2 <- black_saber_new2 %>%
+  ggplot(aes(x=phase2_score, y=phase2_pass, colour=factor(gender))) +
+  theme_minimal() +
+  geom_point() +
+  facet_wrap(~gender) +
+  labs(caption = "Figure 3. (Phase 2->3) Applicant score vs. Success (TRUE for passing to phase two, FALSE for not)",
+       x = "Score", 
+       y = "Success") +
+  theme(
+    plot.caption = element_text(hjust=0)
+  )
+
+black_saber_new2 + scale_colour_manual(name="Gender", values = c("#fc8c03", "#03fc7b"))
+
+```
+## 
+
+```{r, include = FALSE}
+library(tidyverse)
+library(lme4)
+```
+
+## Discussion
+
+_In this section you will summarize your findings across all the research questions and discuss the strengths and limitations of your work. It doesn't have to be long, but keep in mind that often people will just skim the intro and the discussion of a document like this, so make sure it is useful as a semi-standalone section (doesn't have to be completely standalone like the executive summary)._
+
+### Strengths and limitations
+
+\newpage
+# Consultant information
+## Consultant profiles
+
+*Complete this section with a brief bio for each member of your group. If you are completing the project individually, you only need to complete one for yourself. In that case, change the title of this section to 'Consultant profile' instead. Examples below. This section is only marked for completeness, clarity and professionalism, not 'truth' so you can write it as if we're a few years in the future. Put your current degree in as completed and/or add your first choice grad school program, whatever you like. What skills related skills would you most like to highlight? What job title do you want?*
+
+**Statsy McStatsstats**. Statsy is a senior consultant with Eminence Analytics. She specializes in data visualization. Statsy earned her Bachelor of Science, Specialist in Statistics Methods and Practice, from the University of Toronto in 2023.
+
+**Datana Scatterplot**. Datana is a junior consultant with Eminence Analytics. They specialize in reproducible analysis and statistical communication. Datana earned their Bachelor of Science, Majoring in Computer Science and Statistics from the University of Toronto in 2024.
+
+## Code of ethical conduct
+
+_This section should be fairly short, no more than half a page. Assume a general audience, much like your executive summary._
+
+* _Make at least three relevant statements about your company’s approach to ethical statistical consulting. These should be appropriately in line with professional conduct advice like the (Statistical Society of Canada Code of Conduct)[https://ssc.ca/sites/default/files/data/Members/public/Accreditation/ethics_e.pdf] or the (Ethical Guidelines for Statistical Practice from the American Statistical Society)[https://www.amstat.org/ASA/Your-Career/Ethical-Guidelines-for-Statistical-Practice.aspx]. For example, "the customer is always right" ISN’T the type of thing an ethical statistical consultant would include._
+*	_Be very careful not to just copy and paste from these other documents! Put things in your own words._
+
+
+__Final advice: KNIT EARLY AND OFTEN!__
